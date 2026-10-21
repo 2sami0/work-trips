@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Work Trips — Time & KM Tracker</title>
+<meta name="theme-color" content="#0d6efd">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Work Trips">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box} body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;margin:0;background:#f3f5f9;color:#162033;padding-bottom:84px}
+header{background:#0d6efd;color:#fff;padding:18px 16px 22px;border-radius:0 0 22px 22px}
+header h1{margin:0;font-size:22px} header p{margin:4px 0 0;opacity:.9;font-size:13px}
+.wrap{max-width:760px;margin:0 auto;padding:14px}
+.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.status{font-size:15px} .status b{font-size:18px}
+.bigbtn{width:100%;border:0;border-radius:16px;padding:20px;font-size:19px;font-weight:700;color:#fff;margin:8px 0;cursor:pointer}
+.blue{background:#0d6efd}.green{background:#198754}.orange{background:#fd7e14}.dark{background:#212529}.grey{background:#6c757d}
+.bigbtn:active{transform:scale(.99)}
+.btn{border:0;border-radius:10px;padding:11px 14px;font-weight:600;cursor:pointer;background:#e9eef7}
+.btn.primary{background:#0d6efd;color:#fff}.btn.danger{background:#dc3545;color:#fff}.btn.success{background:#198754;color:#fff}
+input,select,textarea{width:100%;padding:12px;border:1px solid #ccd3df;border-radius:10px;font-size:16px;margin:6px 0 12px;background:#fff}
+label{font-size:13px;font-weight:600;color:#445}
+.row{display:flex;gap:10px}.row>*{flex:1}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ddd;display:flex;z-index:5}
+nav button{flex:1;background:none;border:0;padding:14px 4px;font-size:15px;font-weight:600;cursor:pointer;color:#666}
+nav button.active{color:#0d6efd}
+.hidden{display:none!important}
+.chip{border:1px solid #0d6efd;background:#e7f0ff;color:#0d6efd;border-radius:20px;padding:9px 13px;margin:4px 4px 4px 0;font-weight:700;cursor:pointer}
+#netStatus{font-size:12px;font-weight:700;background:rgba(255,255,255,.25);display:inline-block;padding:3px 9px;border-radius:20px;margin-top:8px}
+.trip{border:1px solid #e3e8f0;border-radius:12px;padding:12px;margin:10px 0}
+.trip h4{margin:0 0 6px}.small{font-size:13px;color:#667;line-height:1.5}
+.pill{display:inline-block;background:#e7f0ff;color:#0d6efd;padding:3px 8px;border-radius:20px;font-size:12px;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid #eee;padding:8px 5px;text-align:left}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kpi div{background:#f3f7ff;border-radius:12px;padding:14px}.kpi b{font-size:20px;display:block}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:#fff;width:100%;max-width:760px;border-radius:20px 20px 0 0;padding:20px;max-height:92vh;overflow:auto}
+@media(min-width:700px){.modal{align-items:center}.sheet{border-radius:20px}}
+@media print{nav,.no-print{display:none!important} body{background:#fff;padding:0} header{background:#fff;color:#000;border-bottom:2px solid #000;border-radius:0} .card{box-shadow:none;border:1px solid #ddd}}
+</style>
+</head>
+<body>
+<header><div class="wrap" style="padding:0"><h1>🚗 Work Trips</h1><p>Office ⇄ Clients • Times, kilometres & billing</p><span id="netStatus">● Checking…</span></div></header>
+
+<div class="wrap">
+ <!-- TODAY -->
+ <section id="tab-today">
+  <div class="card status" id="statusCard"></div>
+  <div id="actions"></div>
+  <div class="card"><h3 style="margin-top:0">Today at a glance</h3><div id="todaySummary" class="small">No trip today yet.</div></div>
+  <div class="card no-print"><h3 style="margin-top:0">Forgot to tap?</h3><p class="small">You can add a past trip manually, or correct a trip later in History (delete & re-add).</p><button class="btn" onclick="openManual()">➕ Add a past trip manually</button></div>
+ </section>
+
+ <!-- HISTORY -->
+ <section id="tab-history" class="hidden"><div class="card"><h3 style="margin-top:0">History</h3><div id="history"></div></div></section>
+
+ <!-- REPORT -->
+ <section id="tab-report" class="hidden">
+  <div class="card no-print"><h3 style="margin-top:0">Report for my superior</h3>
+    <label>Period</label><select id="period" onchange="renderReport()"><option value="this-month">This month</option><option value="last-month">Last month</option><option value="this-week">This week</option><option value="all">All time</option></select>
+    <div class="row"><button class="btn success" onclick="exportCSV()">⬇️ Excel / CSV</button><button class="btn primary" onclick="window.print()">🖨️ Print / PDF</button></div>
+    <p class="small">On iPhone: Print → pinch-out / Share → Save as PDF. CSV opens directly in Excel.</p>
+  </div>
+  <div class="card" id="reportCard"></div>
+  <div class="card no-print"><h3 style="margin-top:0">Settings</h3>
+    <label>Your name</label><input id="setName" placeholder="e.g. Jean Dupont">
+    <label>Reimbursement rate (€ per km)</label><input id="setRate" type="number" step="0.01" min="0" placeholder="e.g. 0.42">
+    <button class="btn primary" onclick="saveSettings()">Save settings</button>
+    <hr><h4>⭐ My regular clients (quick tap — no typing)</h4>
+    <div id="clientList" class="small"></div>
+    <div class="row"><input id="newClient" placeholder="e.g. Company ABC, Luxembourg"><button class="btn" onclick="addClient()">➕ Add</button></div>
+    <hr><h4>☁️ Automatic sync (iPhone ⇄ Desktop)</h4>
+    <p class="small">After the one-time Supabase setup (see guide), paste the same 3 things on BOTH devices. Then sync is automatic when online. Offline still works — it syncs later.</p>
+    <label>1) Supabase Project URL</label><input id="syncUrl" placeholder="https://xxxxx.supabase.co">
+    <label>2) Supabase anon / publishable key</label><input id="syncKey" placeholder="eyJ... or sb_publishable_...">
+    <label>3) My secret sync code (same on phone + desktop — invent it, keep it private)</label><input id="syncCode" placeholder="e.g. my-work-trips-8472">
+    <div class="row"><button class="btn" onclick="genSyncCode()">🎲 Generate code</button><button class="btn primary" onclick="saveSyncCfg()">Save sync settings</button></div>
+    <button class="bigbtn green" onclick="syncNow(true)">☁️ SYNC NOW</button>
+    <p class="small" id="syncStatus">Sync not set up yet.</p>
+    <hr><h4>Backup</h4><div class="row"><button class="btn" onclick="exportJSON()">⬇️ Backup data</button><label class="btn" style="text-align:center">⬆️ Restore<input type="file" accept=".json" hidden onchange="importJSON(event)"></label></div>
+    <p class="small">Data is saved on this device and, if sync is set up, in your private Supabase. Still make a Backup monthly, just in case.</p>
+  </div>
+ </section>
+</div>
+
+<nav><button id="n-today" class="active" onclick="showTab('today')">🏠 Today</button><button id="n-history" onclick="showTab('history')">📋 History</button><button id="n-report" onclick="showTab('report')">📊 Report</button></nav>
+
+<div id="modal" class="hidden"></div>
+
+<script>
+let DB = JSON.parse(localStorage.getItem('workTripsDB')||'{"outings":[],"settings":{"name":"","rate":0.42}}');
+let activeId = localStorage.getItem('workTripsActive')||null;
+function save(){localStorage.setItem('workTripsDB',JSON.stringify(DB)); if(activeId)localStorage.setItem('workTripsActive',activeId); else localStorage.removeItem('workTripsActive'); scheduleSync();}
+
+if(!DB.clients) DB.clients=[];
+if(!DB.deleted) DB.deleted=[];
+let SYNC = JSON.parse(localStorage.getItem('workTripsSync')||'{}');
+let syncTimer=null, syncing=false;
+function updateNet(){let el=document.getElementById('netStatus'); if(el) el.textContent=navigator.onLine?'● Online — app also works offline ✓':'● Offline — working fine, data saved on device ✓';}
+window.addEventListener('online',()=>{updateNet(); scheduleSync();}); window.addEventListener('offline',updateNet);
+function learnClient(name){ if(name && !DB.clients.some(c=>c.toLowerCase()===name.toLowerCase())) DB.clients.push(name); }
+function addClient(){ let v=val('newClient'); if(!v)return; learnClient(v); let el=document.getElementById('newClient'); if(el)el.value=''; save(); render(); }
+function delClient(name){ DB.clients=DB.clients.filter(c=>c!==name); save(); render(); }
+function setSyncStatus(t){ let el=document.getElementById('syncStatus'); if(el) el.textContent=t; SYNC.lastStatus=t; localStorage.setItem('workTripsSync',JSON.stringify(SYNC)); }
+function genSyncCode(){ let c='trips-'+Math.random().toString(36).slice(2,8)+'-'+Math.floor(1000+Math.random()*9000); document.getElementById('syncCode').value=c; }
+function saveSyncCfg(){ SYNC.url=val('syncUrl').replace(/\/$/,''); SYNC.key=val('syncKey'); SYNC.code=val('syncCode'); localStorage.setItem('workTripsSync',JSON.stringify(SYNC)); setSyncStatus('Saved. Tap SYNC NOW to test.'); syncNow(true); }
+function scheduleSync(){ if(!SYNC.url||!SYNC.key||!SYNC.code) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncNow(false),2500); }
+function syncHeaders(){ return {'apikey':SYNC.key,'Authorization':'Bearer '+SYNC.key,'Content-Type':'application/json'}; }
+function mergeDB(remote){
+  if(!remote) return;
+  let deleted=new Set([...(DB.deleted||[]),...((remote.deleted)||[])]);
+  let map=new Map();
+  [...(DB.outings||[]),...((remote.outings)||[])].forEach(o=>{ if(o && o.id && !deleted.has(o.id)){ let old=map.get(o.id); if(!old || (o.events||[]).length>=(old.events||[]).length) map.set(o.id,o); }});
+  DB.outings=[...map.values()].sort((a,b)=>new Date(b.events[0].time)-new Date(a.events[0].time));
+  DB.deleted=[...deleted];
+  DB.clients=[...new Set([...(DB.clients||[]),...((remote.clients)||[])])];
+  if(remote.settings){ if(!DB.settings.name && remote.settings.name) DB.settings.name=remote.settings.name; if((DB.settings.rate===undefined||DB.settings.rate===null) && remote.settings.rate!=null) DB.settings.rate=remote.settings.rate; }
+}
+async function syncNow(manual){
+  if(!SYNC.url||!SYNC.key||!SYNC.code){ if(manual) alert('First paste Supabase URL, key and sync code, then Save sync settings. See the setup guide.'); return; }
+  if(syncing) return; if(!navigator.onLine){ setSyncStatus('Offline — will sync when internet returns.'); return; }
+  syncing=true; setSyncStatus('☁️ Syncing…');
+  try{
+    let getRes=await fetch(SYNC.url+'/rest/v1/sync_data?select=payload&code=eq.'+encodeURIComponent(SYNC.code),{headers:syncHeaders()});
+    if(!getRes.ok) throw new Error('Read failed ('+getRes.status+'). Did you paste the SQL and copy URL/key correctly?');
+    let rows=[]; let raw=await getRes.text(); try{ rows=JSON.parse(raw); }catch(_){ throw new Error('Supabase did not answer correctly. Check Project URL (step 4 of the guide).'); } if(rows.length && rows[0].payload) mergeDB(rows[0].payload);
+    localStorage.setItem('workTripsDB',JSON.stringify(DB));
+    let upRes=await fetch(SYNC.url+'/rest/v1/sync_data',{method:'POST',headers:{...syncHeaders(),'Prefer':'resolution=merge-duplicates'},body:JSON.stringify([{code:SYNC.code,payload:DB,updated_at:new Date().toISOString()}])});
+    if(!upRes.ok) throw new Error('Save failed ('+upRes.status+').');
+    setSyncStatus('✅ Synced '+new Date().toLocaleString()+' — phone & desktop are up to date.');
+    render();
+  }catch(e){ setSyncStatus('⚠️ Sync failed: '+e.message); if(manual) alert('Sync failed: '+e.message); }
+  syncing=false;
+}
+function fmtT(iso){return iso?new Date(iso).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'—'}
+function fmtD(iso){return iso?new Date(iso).toLocaleDateString([],{weekday:'short',day:'2-digit',month:'short',year:'numeric'}):'—'}
+function mins(a,b){return (!a||!b)?0:Math.max(0,Math.round((new Date(b)-new Date(a))/60000))}
+function dur(m){return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m'}
+function nowLocal(){let d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16)}
+function active(){return DB.outings.find(o=>o.id===activeId)}
+function showTab(t){['today','history','report'].forEach(x=>{document.getElementById('tab-'+x).classList.toggle('hidden',x!==t);document.getElementById('n-'+x).classList.toggle('active',x===t)}); render();}
+
+function openModal(title, body, onSave, saveLabel){
+  const m=document.getElementById('modal');
+  m.innerHTML=`<div class="modal"><div class="sheet"><h3 style="margin-top:0">${title}</h3>${body}
+  <button class="bigbtn blue" id="mSave">${saveLabel||'Confirm ✓'}</button><button class="btn" style="width:100%" onclick="closeModal()">Cancel</button></div></div>`;
+  m.classList.remove('hidden');
+  document.getElementById('mSave').onclick=()=>{ if(onSave()!==false) closeModal(); };
+}
+function closeModal(){document.getElementById('modal').classList.add('hidden'); document.getElementById('modal').innerHTML='';}
+function fields({client=false,odoLabel='Odometer (km)'}={}){return `${client?'<label>Client name *</label><input id="f_client" placeholder="e.g. Company ABC">':''}<label>Date & time</label><input id="f_time" type="datetime-local" value="${nowLocal()}"><label>${odoLabel}</label><input id="f_odo" type="number" inputmode="decimal" placeholder="e.g. 45230"><label>Note (optional)</label><input id="f_note" placeholder="">`}
+function val(id){return document.getElementById(id)?.value.trim()}
+
+function leaveOffice(){ openModal('🚗 Leave Office', fields({odoLabel:'Odometer at office — START *'}), ()=>{
+  if(!val('f_odo')){alert('Please enter the starting odometer — needed for your km payment.');return false}
+  let o={id:Date.now().toString(), events:[{type:'leave_office',time:new Date(val('f_time')).toISOString(),odo:+val('f_odo')||null,note:val('f_note')}]};
+  DB.outings.unshift(o); activeId=o.id; save(); render();
+},'Start trip ✓')}
+
+function arriveClient(){ let chips=DB.clients.length?'<p class="small" style="margin-top:0">⭐ Tap your client:</p><div>'+DB.clients.map(c=>`<button type="button" class="chip" onclick="document.getElementById('f_client').value=this.textContent">${c}</button>`).join('')+'</div>':''; openModal('📍 Arrive at Client', chips+fields({client:true,odoLabel:'Odometer (optional, for km per leg)'}), ()=>{
+  if(!val('f_client')){alert('Please enter the client name — needed for billing.');return false}
+  learnClient(val('f_client')); active().events.push({type:'arrive_client',client:val('f_client'),time:new Date(val('f_time')).toISOString(),odo:val('f_odo')?+val('f_odo'):null,note:val('f_note')}); save(); render();
+},'Arrived ✓')}
+
+function leaveClient(){ let o=active(); let last=[...o.events].reverse().find(e=>e.type==='arrive_client'); openModal('🚶 Leave Client'+(last?' — '+last.client:''), fields({odoLabel:'Odometer (optional)'}), ()=>{
+  o.events.push({type:'leave_client',client:last?last.client:'',time:new Date(val('f_time')).toISOString(),odo:val('f_odo')?+val('f_odo'):null,note:val('f_note')}); save(); render();
+},'Left client ✓')}
+
+function backOffice(){ openModal('🏢 Back at Office', fields({odoLabel:'Odometer back at office — END *'}), ()=>{
+  if(!val('f_odo')){alert('Please enter the final odometer — needed to calculate your km.');return false}
+  active().events.push({type:'back_office',time:new Date(val('f_time')).toISOString(),odo:+val('f_odo')||null,note:val('f_note')}); activeId=null; save(); render();
+},'Finish trip ✓')}
+
+function analyse(o){
+  let ev=o.events, start=ev.find(e=>e.type==='leave_office'), end=ev.find(e=>e.type==='back_office');
+  let km=(start?.odo!=null && end?.odo!=null)?(end.odo-start.odo):null;
+  let travel=0, clientTime=0, visits=[], cur=null;
+  for(let i=0;i<ev.length;i++){
+    if(ev[i].type==='arrive_client'){ if(i>0) travel+=mins(ev[i-1].time,ev[i].time); cur={client:ev[i].client,arrive:ev[i].time,leave:null,mins:0}; visits.push(cur);}
+    if(ev[i].type==='leave_client'){ if(cur){cur.leave=ev[i].time;cur.mins=mins(cur.arrive,cur.leave);clientTime+=cur.mins;cur=null;} }
+    if(ev[i].type==='back_office' && i>0 && ev[i-1].type!=='back_office') travel+=mins(ev[i-1].time,ev[i].time);
+  }
+  // avoid double counting back_office travel already handled in loop pattern: recompute cleanly
+  travel=0; for(let i=1;i<ev.length;i++){ let p=ev[i-1],c=ev[i]; if(c.type==='arrive_client'||c.type==='back_office') travel+=mins(p.time,c.time); }
+  return {start,end,km,travel,clientTime,visits,total:start&&end?mins(start.time,end.time):0};
+}
+function tripHTML(o){
+  let a=analyse(o); let rate=DB.settings.rate||0;
+  return `<div class="trip"><h4>${fmtD(o.events[0].time)} ${a.end?'':'<span class=pill>IN PROGRESS</span>'}</h4>
+  <div class="small">${o.events.map(e=>`${e.type==='leave_office'?'🚗 Leave office':e.type==='arrive_client'?'📍 Arrive <b>'+e.client+'</b>':e.type==='leave_client'?'🚶 Leave <b>'+(e.client||'client')+'</b>':'🏢 Back at office'} — <b>${fmtT(e.time)}</b>${e.odo!=null?' • '+e.odo+' km':''}${e.note?' • '+e.note:''}`).join('<br>')}</div>
+  <div class="small" style="margin-top:8px">🚗 <b>${a.km!=null?a.km+' km':'—'}</b> ${a.km!=null&&rate?'• 💶 €'+(a.km*rate).toFixed(2):''} • 🧭 Travel: <b>${dur(a.travel)}</b> • 👤 At clients: <b>${dur(a.clientTime)}</b> • ⏱ Total out: <b>${dur(a.total)}</b><br>${a.visits.map(v=>`• ${v.client}: ${fmtT(v.arrive)}–${v.leave?fmtT(v.leave):'...'} (${dur(v.mins)})`).join('<br>')}</div>
+  <div class="row no-print" style="margin-top:8px"><button class="btn danger" onclick="delTrip('${o.id}')">🗑 Delete</button></div></div>`;
+}
+function delTrip(id){ if(confirm('Delete this trip?')){if(!DB.deleted)DB.deleted=[]; DB.deleted.push(id); DB.outings=DB.outings.filter(o=>o.id!==id); if(activeId===id)activeId=null; save(); render();} }
+
+function openManual(){
+ openModal('➕ Add a past trip manually', `<label>Client name *</label><input id="m_client"><div class="row"><div><label>Leave office</label><input id="m_lo" type="datetime-local"></div><div><label>Arrive client</label><input id="m_ac" type="datetime-local"></div></div><div class="row"><div><label>Leave client</label><input id="m_lc" type="datetime-local"></div><div><label>Back at office</label><input id="m_bo" type="datetime-local"></div></div><div class="row"><div><label>Odometer start</label><input id="m_os" type="number"></div><div><label>Odometer end</label><input id="m_oe" type="number"></div></div>`, ()=>{
+   if(!val('m_client')||!val('m_lo')||!val('m_ac')||!val('m_lc')||!val('m_bo')){alert('Please fill client and all 4 times.');return false}
+   learnClient(val('m_client'));
+   let ev=[{type:'leave_office',time:new Date(val('m_lo')).toISOString(),odo:val('m_os')?+val('m_os'):null},{type:'arrive_client',client:val('m_client'),time:new Date(val('m_ac')).toISOString(),odo:null},{type:'leave_client',client:val('m_client'),time:new Date(val('m_lc')).toISOString(),odo:null},{type:'back_office',time:new Date(val('m_bo')).toISOString(),odo:val('m_oe')?+val('m_oe'):null}];
+   DB.outings.unshift({id:Date.now().toString(),events:ev}); DB.outings.sort((a,b)=>new Date(b.events[0].time)-new Date(a.events[0].time)); save(); render();
+ },'Save trip ✓');
+}
+
+function render(){
+  let o=active(), sc=document.getElementById('statusCard'), ac=document.getElementById('actions');
+  if(!o){ sc.innerHTML='🏢 You are currently <b>at the office</b><br><span class="small">Tap below when you leave for a client.</span>'; ac.innerHTML='<button class="bigbtn blue" onclick="leaveOffice()">🚗 LEAVE OFFICE</button>'; }
+  else{
+    let last=o.events[o.events.length-1], a=analyse(o);
+    if(last.type==='leave_office'){ sc.innerHTML='🧭 You are <b>travelling to a client</b><br><span class="small">Left office at '+fmtT(last.time)+'</span>'; ac.innerHTML='<button class="bigbtn green" onclick="arriveClient()">📍 ARRIVE AT CLIENT</button>'; }
+    else if(last.type==='arrive_client'){ sc.innerHTML='👤 You are <b>at '+last.client+'</b><br><span class="small">Arrived at '+fmtT(last.time)+' • Time here so far: '+dur(mins(last.time,new Date().toISOString()))+'</span>'; ac.innerHTML='<button class="bigbtn orange" onclick="leaveClient()">🚶 LEAVE CLIENT</button>'; }
+    else if(last.type==='leave_client'){ sc.innerHTML='🧭 You <b>left '+(last.client||'client')+'</b> at '+fmtT(last.time)+'<br><span class="small">Going to another client, or back to office?</span>'; ac.innerHTML='<button class="bigbtn green" onclick="arriveClient()">📍 ARRIVE AT NEXT CLIENT</button><button class="bigbtn dark" onclick="backOffice()">🏢 BACK AT OFFICE</button>'; }
+  }
+  let today=new Date().toDateString(); let todays=DB.outings.filter(x=>new Date(x.events[0].time).toDateString()===today);
+  document.getElementById('todaySummary').innerHTML= todays.length? todays.map(tripHTML).join('') : 'No trip today yet. If you stay in the office all day, you don\'t need to do anything.';
+  document.getElementById('history').innerHTML= DB.outings.length? DB.outings.map(tripHTML).join('') : '<p class="small">No trips recorded yet.</p>';
+  document.getElementById('setName').value=DB.settings.name||''; document.getElementById('setRate').value=DB.settings.rate??0.42;
+  let cl=document.getElementById('clientList'); if(cl) cl.innerHTML= DB.clients.length? DB.clients.map(c=>`<div style="margin:6px 0">⭐ ${c} <button class="btn" style="padding:4px 9px" onclick="delClient('${c.replace(/'/g,"\\'")}')">✕</button></div>`).join('') : 'No clients saved yet.';
+  let su=document.getElementById('syncUrl'); if(su && document.activeElement!==su) su.value=SYNC.url||'';
+  let sk=document.getElementById('syncKey'); if(sk && document.activeElement!==sk) sk.value=SYNC.key||'';
+  let scd=document.getElementById('syncCode'); if(scd && document.activeElement!==scd) scd.value=SYNC.code||'';
+  if(SYNC.lastStatus) {let ss=document.getElementById('syncStatus'); if(ss) ss.textContent=SYNC.lastStatus;}
+  updateNet();
+  renderReport();
+}
+function inPeriod(o){ let v=document.getElementById('period').value, d=new Date(o.events[0].time), n=new Date();
+ if(v==='all')return true; if(v==='this-month')return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();
+ if(v==='last-month'){let l=new Date(n.getFullYear(),n.getMonth()-1,1);return d.getMonth()===l.getMonth()&&d.getFullYear()===l.getFullYear();}
+ if(v==='this-week'){let s=new Date(n); s.setDate(n.getDate()-((n.getDay()+6)%7)); s.setHours(0,0,0,0); return d>=s;} return true;}
+function renderReport(){
+  let list=DB.outings.filter(inPeriod), rate=DB.settings.rate||0, km=0, travel=0, ct=0, per={};
+  list.forEach(o=>{let a=analyse(o); km+=a.km||0; travel+=a.travel; ct+=a.clientTime; a.visits.forEach(v=>{per[v.client]=(per[v.client]||0)+v.mins})});
+  document.getElementById('reportCard').innerHTML=`<h3 style="margin:0">Report — ${DB.settings.name||''}</h3><p class="small">${document.getElementById('period').selectedOptions[0].text} • Generated ${new Date().toLocaleString()}</p>
+  <div class="kpi"><div>Kilometres<b>${km} km</b></div><div>Reimbursement (${rate} €/km)<b>€${(km*rate).toFixed(2)}</b></div><div>Travel time<b>${dur(travel)}</b></div><div>Time at clients<b>${dur(ct)}</b></div></div>
+  <h4>Per client (billable time)</h4>${Object.keys(per).length?Object.entries(per).map(([k,v])=>`<div class="small">• <b>${k}</b>: ${dur(v)}</div>`).join(''):'<p class="small">—</p>'}
+  <h4>Detail</h4>${list.length?list.map(tripHTML).join(''):'<p class="small">No trips in this period.</p>'}`;
+}
+function exportCSV(){
+  let list=DB.outings.filter(inPeriod), rows=[['Date','Client','Leave Office','Arrive Client','Leave Client','Back at Office','KM','Reimbursement EUR','Travel Time','Time at Client']];
+  list.forEach(o=>{let a=analyse(o); a.visits.forEach((v,i)=>rows.push([new Date(o.events[0].time).toLocaleDateString(),v.client,i===0?fmtT(a.start?.time):'',fmtT(v.arrive),fmtT(v.leave),i===a.visits.length-1?fmtT(a.end?.time):'',i===0?(a.km??''): '',i===0?(a.km!=null?(a.km*(DB.settings.rate||0)).toFixed(2):''):'',i===0?dur(a.travel):'',dur(v.mins)])); if(!a.visits.length) rows.push([new Date(o.events[0].time).toLocaleDateString(),'','','','','',a.km??'', '',dur(a.travel),''])});
+  let csv='\uFEFF'+rows.map(r=>r.map(c=>'"'+String(c).replaceAll('"','""')+'"').join(';')).join('\n');
+  let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='work-trips-report.csv'; a.click();
+}
+function saveSettings(){DB.settings.name=val('setName'); DB.settings.rate=parseFloat(val('setRate'))||0; save(); render(); alert('Saved ✓')}
+function exportJSON(){let a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'})); a.download='work-trips-backup.json'; a.click();}
+function importJSON(e){let f=e.target.files[0]; if(!f)return; f.text().then(t=>{let incoming=JSON.parse(t); let ids=new Set(DB.outings.map(o=>o.id)); let added=0; (incoming.outings||[]).forEach(o=>{if(!ids.has(o.id)){DB.outings.push(o);added++}}); (incoming.clients||[]).forEach(learnClient); DB.outings.sort((a,b)=>new Date(b.events[0].time)-new Date(a.events[0].time)); save(); render(); alert('Merged ✓ Added '+added+' new trip(s). Nothing was deleted — this is how you can move data between phone and desktop.')})}
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+render(); updateNet(); setTimeout(()=>syncNow(false),1200);
+</script>
+</body>
+</html>
